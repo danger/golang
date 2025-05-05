@@ -27,7 +27,7 @@ func main() {
 		}
 		err := dangerJs.Process(command, rest)
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err.Error())
 		}
 	case "runner":
 		runner.Run()

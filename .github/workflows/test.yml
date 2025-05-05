@@ -1,0 +1,47 @@
+name: "Danger Go"
+on: [pull_request]
+jobs:
+  danger:
+    name: Danger Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '^1.24'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Danger JS
+        run: npm install -g danger
+
+      - name: Install danger-go
+        run: go install github.com/danger/golang/cmd/danger-go
+
+      - name: Check versions
+        run: |
+          go version
+          danger-go version
+          danger -V
+
+      - name: Run danger-go ci
+        run: danger-go ci
+        working-directory: ./build/ci
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '^1.24'
+
+      - name: Go tests
+        run: go test -v ./...
