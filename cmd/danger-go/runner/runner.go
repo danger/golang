@@ -38,7 +38,7 @@ func Run() {
 	}
 
 	var jsonData struct {
-		Danger dangerJs.DSL `json:"danger"`
+		Danger dangerJs.DSLData `json:"danger"`
 	}
 	err = json.Unmarshal(jsonBytes, &jsonData)
 	if err != nil {
@@ -62,7 +62,7 @@ func Run() {
 	}
 
 	d := danger.New()
-	fn(d, jsonData.Danger)
+	fn(d, jsonData.Danger.ToInterface())
 	respJSON, err := d.Results()
 	if err != nil {
 		log.Fatalf("marshalling response: %s", err.Error())
