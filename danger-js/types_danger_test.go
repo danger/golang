@@ -1,31 +1,12 @@
 package dangerJs
 
 import (
-	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-// parseDiffContent extracts the diff parsing logic for testing
-func parseDiffContent(diffContent string) FileDiff {
-	var fileDiff FileDiff
-	// Only match lines that start with + or - but not +++ or --- (file headers)
-	addedRe := regexp.MustCompile(`^\+([^+].*|$)`)
-	removedRe := regexp.MustCompile(`^-([^-].*|$)`)
-
-	lines := strings.Split(diffContent, "\n")
-	for _, line := range lines {
-		if matches := addedRe.FindStringSubmatch(line); len(matches) > 1 {
-			fileDiff.AddedLines = append(fileDiff.AddedLines, DiffLine{Content: matches[1]})
-		} else if matches := removedRe.FindStringSubmatch(line); len(matches) > 1 {
-			fileDiff.RemovedLines = append(fileDiff.RemovedLines, DiffLine{Content: matches[1]})
-		}
-	}
-
-	return fileDiff
-}
+// Note: parseDiffContent is now a shared function in types_danger.go
 
 func TestParseDiffContent(t *testing.T) {
 	tests := []struct {

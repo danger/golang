@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -36,6 +37,7 @@ type Git interface {
 	GetDeletedFiles() []FilePath
 	GetCommits() []GitCommit
 	DiffForFile(filePath string) (FileDiff, error)
+	DiffForFileWithRefs(filePath, baseRef, headRef string) (FileDiff, error)
 }
 
 // DSL is the main Danger context, with all fields as interfaces for testability.
@@ -85,8 +87,14 @@ type DiffLine struct {
 }
 
 // DiffForFile executes a git diff command for a specific file and parses its output.
+// Uses HEAD^ and HEAD as the base and head references by default.
 func (g gitImpl) DiffForFile(filePath string) (FileDiff, error) {
-	cmd := exec.Command("git", "diff", "--unified=0", "HEAD^", "HEAD", filePath)
+	return g.DiffForFileWithRefs(filePath, "HEAD^", "HEAD")
+}
+
+// DiffForFileWithRefs executes a git diff command for a specific file with configurable references.
+func (g gitImpl) DiffForFileWithRefs(filePath, baseRef, headRef string) (FileDiff, error) {
+	cmd := exec.Command("git", "diff", "--unified=0", baseRef, headRef, filePath)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
@@ -94,22 +102,47 @@ func (g gitImpl) DiffForFile(filePath string) (FileDiff, error) {
 		return FileDiff{}, err
 	}
 
-	diffContent := out.String()
+	return parseDiffContent(out.String()), nil
+}
+
+// parseDiffContent parses git diff output and extracts added and removed lines with line numbers
+func parseDiffContent(diffContent string) FileDiff {
 	var fileDiff FileDiff
 	// Only match lines that start with + or - but not +++ or --- (file headers)
 	addedRe := regexp.MustCompile(`^\+([^+].*|$)`)
 	removedRe := regexp.MustCompile(`^-([^-].*|$)`)
+	// Match hunk headers like @@ -1,3 +1,4 @@
+	hunkRe := regexp.MustCompile(`^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@`)
 
 	lines := strings.Split(diffContent, "\n")
+	var currentRemovedLine, currentAddedLine int
+
 	for _, line := range lines {
-		if matches := addedRe.FindStringSubmatch(line); len(matches) > 1 {
-			fileDiff.AddedLines = append(fileDiff.AddedLines, DiffLine{Content: matches[1]})
+		// Check for hunk header to track line numbers
+		if hunkMatches := hunkRe.FindStringSubmatch(line); len(hunkMatches) > 0 {
+			// Parse starting line numbers from hunk header
+			if removedStart, err := strconv.Atoi(hunkMatches[1]); err == nil {
+				currentRemovedLine = removedStart
+			}
+			if addedStart, err := strconv.Atoi(hunkMatches[3]); err == nil {
+				currentAddedLine = addedStart
+			}
+		} else if matches := addedRe.FindStringSubmatch(line); len(matches) > 1 {
+			fileDiff.AddedLines = append(fileDiff.AddedLines, DiffLine{
+				Content: matches[1],
+				Line:    currentAddedLine,
+			})
+			currentAddedLine++
 		} else if matches := removedRe.FindStringSubmatch(line); len(matches) > 1 {
-			fileDiff.RemovedLines = append(fileDiff.RemovedLines, DiffLine{Content: matches[1]})
+			fileDiff.RemovedLines = append(fileDiff.RemovedLines, DiffLine{
+				Content: matches[1],
+				Line:    currentRemovedLine,
+			})
+			currentRemovedLine++
 		}
 	}
 
-	return fileDiff, nil
+	return fileDiff
 }
 
 // settingsImpl is the internal implementation of the Settings interface
