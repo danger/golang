@@ -98,7 +98,6 @@ go get github.com/danger/golang
 
 ## Key Dependencies
 
-- **Go 1.24+** required
 - **Danger JS** must be installed globally (`npm install -g danger`)
 - **github.com/stretchr/testify** for testing
 
