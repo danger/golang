@@ -28,12 +28,12 @@ index 123..456 100644
 -	fmt.Println("removed line")`,
 			wantFileDiff: FileDiff{
 				AddedLines: []DiffLine{
-					{Content: "func newFunction() {", Line: 0},
-					{Content: "\treturn \"added line\"", Line: 0},
+					{Content: "func newFunction() {", Line: 1},
+					{Content: "\treturn \"added line\"", Line: 5},
 				},
 				RemovedLines: []DiffLine{
-					{Content: "func oldFunction() {", Line: 0},
-					{Content: "\tfmt.Println(\"removed line\")", Line: 0},
+					{Content: "func oldFunction() {", Line: 1},
+					{Content: "\tfmt.Println(\"removed line\")", Line: 5},
 				},
 			},
 		},
@@ -49,9 +49,9 @@ index 123..456 100644
 +func main() {}`,
 			wantFileDiff: FileDiff{
 				AddedLines: []DiffLine{
-					{Content: "package main", Line: 0},
-					{Content: "", Line: 0},
-					{Content: "func main() {}", Line: 0},
+					{Content: "package main", Line: 1},
+					{Content: "", Line: 2},
+					{Content: "func main() {}", Line: 3},
 				},
 				RemovedLines: nil,
 			},
@@ -69,9 +69,9 @@ index 123..456 100644
 			wantFileDiff: FileDiff{
 				AddedLines: nil,
 				RemovedLines: []DiffLine{
-					{Content: "package main", Line: 0},
-					{Content: "", Line: 0},
-					{Content: "func old() {}", Line: 0},
+					{Content: "package main", Line: 1},
+					{Content: "", Line: 2},
+					{Content: "func old() {}", Line: 3},
 				},
 			},
 		},
@@ -98,11 +98,11 @@ index 123..456 100644
  	unchanged line 3`,
 			wantFileDiff: FileDiff{
 				AddedLines: []DiffLine{
-					{Content: "\tnew implementation", Line: 0},
-					{Content: "\tadditional line", Line: 0},
+					{Content: "\tnew implementation", Line: 10},
+					{Content: "\tadditional line", Line: 11},
 				},
 				RemovedLines: []DiffLine{
-					{Content: "\told implementation", Line: 0},
+					{Content: "\told implementation", Line: 10},
 				},
 			},
 		},
@@ -117,10 +117,10 @@ index 123..456 100644
 +	fmt.Printf("Hi %s!\n", name)`,
 			wantFileDiff: FileDiff{
 				AddedLines: []DiffLine{
-					{Content: "\tfmt.Printf(\"Hi %s!\\n\", name)", Line: 0},
+					{Content: "\tfmt.Printf(\"Hi %s!\\n\", name)", Line: 1},
 				},
 				RemovedLines: []DiffLine{
-					{Content: "\tfmt.Printf(\"Hello %s\\n\", name)", Line: 0},
+					{Content: "\tfmt.Printf(\"Hello %s\\n\", name)", Line: 1},
 				},
 			},
 		},
@@ -135,10 +135,10 @@ index 123..456 100644
 +},`,
 			wantFileDiff: FileDiff{
 				AddedLines: []DiffLine{
-					{Content: "},", Line: 0},
+					{Content: "},", Line: 1},
 				},
 				RemovedLines: []DiffLine{
-					{Content: "}", Line: 0},
+					{Content: "}", Line: 1},
 				},
 			},
 		},
@@ -155,12 +155,12 @@ index 123..456 100644
 + `,
 			wantFileDiff: FileDiff{
 				AddedLines: []DiffLine{
-					{Content: "", Line: 0},
-					{Content: " ", Line: 0},
+					{Content: "", Line: 1},
+					{Content: " ", Line: 2},
 				},
 				RemovedLines: []DiffLine{
-					{Content: "", Line: 0},
-					{Content: " ", Line: 0},
+					{Content: "", Line: 1},
+					{Content: " ", Line: 2},
 				},
 			},
 		},
@@ -195,12 +195,12 @@ index 123..456 100644
  }`,
 			wantFileDiff: FileDiff{
 				AddedLines: []DiffLine{
-					{Content: "import \"fmt\"", Line: 0},
-					{Content: "\t\tfmt.Println(\"new\")", Line: 0},
-					{Content: "\t\tfmt.Println(\"extra\")", Line: 0},
+					{Content: "import \"fmt\"", Line: 1},
+					{Content: "\t\tfmt.Println(\"new\")", Line: 11},
+					{Content: "\t\tfmt.Println(\"extra\")", Line: 12},
 				},
 				RemovedLines: []DiffLine{
-					{Content: "\t\tfmt.Println(\"old\")", Line: 0},
+					{Content: "\t\tfmt.Println(\"old\")", Line: 10},
 				},
 			},
 		},
