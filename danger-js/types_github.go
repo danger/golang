@@ -2,15 +2,6 @@ package dangerJs
 
 import "time"
 
-type GitHub struct {
-	Issue              GitHubIssue     `json:"issue"`
-	PR                 GitHubPR        `json:"pr"`
-	ThisPR             GitHubAPIPR     `json:"thisPR"`
-	Commits            []GitHubCommit  `json:"commits"`
-	Reviews            []GitHubReview  `json:"reviews"`
-	RequestedReviewers GitHubReviewers `json:"requested_reviewers"`
-}
-
 type GitHubIssue struct {
 	Labels []GitHubIssueLabel `json:"labels"`
 }

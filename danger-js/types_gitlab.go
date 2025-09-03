@@ -2,13 +2,6 @@ package dangerJs
 
 import "time"
 
-type GitLab struct {
-	Metadata  RepoMetaData     `json:"Metadata"`
-	MR        GitLabMR         `json:"mr"`
-	Commits   []GitLabMRCommit `json:"commits"`
-	Approvals GitLabApproval   `json:"approvals"`
-}
-
 type RepoMetaData struct {
 	RepoSlug      string `json:"repoSlug"`
 	PullRequestID string `json:"pullRequestID"`

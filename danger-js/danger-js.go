@@ -37,11 +37,11 @@ func GetPR(url string, dangerBin string) (DSL, error) {
 		return DSL{}, fmt.Errorf("could not download DSL JSON with danger-js: %w", err)
 	}
 
-	var pr DSL
-	if err = json.Unmarshal(prJSON, &pr); err != nil {
+	var prData DSLData
+	if err = json.Unmarshal(prJSON, &prData); err != nil {
 		return DSL{}, err
 	}
-	return pr, nil
+	return prData.ToInterface(), nil
 }
 
 func Process(command string, args []string) error {
