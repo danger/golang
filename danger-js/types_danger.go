@@ -2,10 +2,19 @@ package dangerJs
 
 import (
 	"bytes"
+	"fmt"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+)
+
+var (
+	// Compiled regex patterns for diff parsing
+	addedLineRe   = regexp.MustCompile(`^\+([^+].*|$)`)
+	removedLineRe = regexp.MustCompile(`^-([^-].*|$)`)
+	hunkHeaderRe  = regexp.MustCompile(`^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@`)
 )
 
 type GitHub interface {
@@ -92,8 +101,34 @@ func (g gitImpl) DiffForFile(filePath string) (FileDiff, error) {
 	return g.DiffForFileWithRefs(filePath, "HEAD^", "HEAD")
 }
 
+// validateFilePath validates that the file path doesn't contain dangerous characters
+func validateFilePath(path string) bool {
+	// Clean the path and check for dangerous patterns
+	cleaned := filepath.Clean(path)
+
+	// Reject paths that try to escape the repository
+	if strings.Contains(cleaned, "..") {
+		return false
+	}
+
+	// Reject paths with shell metacharacters that could be used for command injection
+	dangerousChars := []string{";", "|", "&", "$", "`", "(", ")", "{", "}", "[", "]", "*", "?", "<", ">"}
+	for _, char := range dangerousChars {
+		if strings.Contains(path, char) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // DiffForFileWithRefs executes a git diff command for a specific file with configurable references.
 func (g gitImpl) DiffForFileWithRefs(filePath, baseRef, headRef string) (FileDiff, error) {
+	// Validate file path to prevent command injection
+	if !validateFilePath(filePath) {
+		return FileDiff{}, fmt.Errorf("invalid file path: %s", filePath)
+	}
+
 	cmd := exec.Command("git", "diff", "--unified=0", baseRef, headRef, filePath)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -108,18 +143,13 @@ func (g gitImpl) DiffForFileWithRefs(filePath, baseRef, headRef string) (FileDif
 // parseDiffContent parses git diff output and extracts added and removed lines with line numbers
 func parseDiffContent(diffContent string) FileDiff {
 	var fileDiff FileDiff
-	// Only match lines that start with + or - but not +++ or --- (file headers)
-	addedRe := regexp.MustCompile(`^\+([^+].*|$)`)
-	removedRe := regexp.MustCompile(`^-([^-].*|$)`)
-	// Match hunk headers like @@ -1,3 +1,4 @@
-	hunkRe := regexp.MustCompile(`^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@`)
 
 	lines := strings.Split(diffContent, "\n")
 	var currentRemovedLine, currentAddedLine int
 
 	for _, line := range lines {
 		// Check for hunk header to track line numbers
-		if hunkMatches := hunkRe.FindStringSubmatch(line); len(hunkMatches) > 0 {
+		if hunkMatches := hunkHeaderRe.FindStringSubmatch(line); len(hunkMatches) > 0 {
 			// Parse starting line numbers from hunk header
 			if removedStart, err := strconv.Atoi(hunkMatches[1]); err == nil {
 				currentRemovedLine = removedStart
@@ -127,13 +157,13 @@ func parseDiffContent(diffContent string) FileDiff {
 			if addedStart, err := strconv.Atoi(hunkMatches[3]); err == nil {
 				currentAddedLine = addedStart
 			}
-		} else if matches := addedRe.FindStringSubmatch(line); len(matches) > 1 {
+		} else if matches := addedLineRe.FindStringSubmatch(line); len(matches) > 1 {
 			fileDiff.AddedLines = append(fileDiff.AddedLines, DiffLine{
 				Content: matches[1],
 				Line:    currentAddedLine,
 			})
 			currentAddedLine++
-		} else if matches := removedRe.FindStringSubmatch(line); len(matches) > 1 {
+		} else if matches := removedLineRe.FindStringSubmatch(line); len(matches) > 1 {
 			fileDiff.RemovedLines = append(fileDiff.RemovedLines, DiffLine{
 				Content: matches[1],
 				Line:    currentRemovedLine,
