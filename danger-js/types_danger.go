@@ -112,7 +112,7 @@ func validateFilePath(path string) bool {
 	}
 
 	// Reject paths with shell metacharacters that could be used for command injection
-	dangerousChars := []string{";", "|", "&", "$", "`", "(", ")", "{", "}", "[", "]", "*", "?", "<", ">"}
+	dangerousChars := []string{";", "|", "&", "$", "`", "(", ")", "{", "}", "[", "]", "*", "?", "<", ">", "'", "\""}
 	for _, char := range dangerousChars {
 		if strings.Contains(path, char) {
 			return false
@@ -122,11 +122,48 @@ func validateFilePath(path string) bool {
 	return true
 }
 
+// validateGitRef validates that the git ref name doesn't contain dangerous characters
+func validateGitRef(ref string) bool {
+	// Git refs must not contain certain characters and must not be empty
+	if ref == "" {
+		return false
+	}
+	// Disallow shell metacharacters and whitespace
+	dangerousChars := []string{";", "|", "&", "$", "`", "(", ")", "{", "}", "[", "]", "*", "?", "<", ">", " ", "\t", "\n", "\r", "'", "\""}
+	for _, char := range dangerousChars {
+		if strings.Contains(ref, char) {
+			return false
+		}
+	}
+	// Disallow path traversal
+	if strings.Contains(ref, "..") {
+		return false
+	}
+	// Disallow slashes at the start or end, or consecutive slashes
+	if strings.HasPrefix(ref, "/") || strings.HasSuffix(ref, "/") || strings.Contains(ref, "//") {
+		return false
+	}
+	// Disallow ref names with ASCII control characters
+	for _, r := range ref {
+		if r < 32 || r == 127 {
+			return false
+		}
+	}
+	return true
+}
+
 // DiffForFileWithRefs executes a git diff command for a specific file with configurable references.
 func (g gitImpl) DiffForFileWithRefs(filePath, baseRef, headRef string) (FileDiff, error) {
 	// Validate file path to prevent command injection
 	if !validateFilePath(filePath) {
 		return FileDiff{}, fmt.Errorf("invalid file path: %s", filePath)
+	}
+	// Validate baseRef and headRef to prevent command injection
+	if !validateGitRef(baseRef) {
+		return FileDiff{}, fmt.Errorf("invalid base ref: %s", baseRef)
+	}
+	if !validateGitRef(headRef) {
+		return FileDiff{}, fmt.Errorf("invalid head ref: %s", headRef)
 	}
 
 	cmd := exec.Command("git", "diff", "--unified=0", baseRef, headRef, filePath)
