@@ -284,7 +284,7 @@ func TestValidateFilePath(t *testing.T) {
 		},
 		{
 			name:      "path with spaces in filename",
-			path:      "my file.go", // Invalid due to spaces (potential shell injection)
+			path:      "my file.go", // Invalid due to spaces (can cause issues with shell command parsing)
 			wantValid: false,
 		},
 		{
