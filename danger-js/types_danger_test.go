@@ -183,7 +183,7 @@ index 123..456 100644
 +++ b/multi.go
 @@ -1,3 +1,4 @@
  package main
- 
+
 +import "fmt"
  func main() {
 @@ -10,6 +11,7 @@
@@ -204,12 +204,166 @@ index 123..456 100644
 				},
 			},
 		},
+		{
+			name: "malformed diff without hunk headers",
+			gitDiffOutput: `diff --git a/bad.go b/bad.go
+index 123..456 100644
+--- a/bad.go
++++ b/bad.go
++added line without hunk header
+-removed line without hunk header`,
+			wantFileDiff: FileDiff{
+				AddedLines:   nil, // Should be empty since no valid hunk header
+				RemovedLines: nil, // Should be empty since no valid hunk header
+			},
+		},
+		{
+			name: "malformed hunk header",
+			gitDiffOutput: `diff --git a/bad.go b/bad.go
+index 123..456 100644
+--- a/bad.go
++++ b/bad.go
+@@ invalid hunk header @@
++added line after invalid header
+-removed line after invalid header`,
+			wantFileDiff: FileDiff{
+				AddedLines:   nil, // Should be empty since hunk header is invalid
+				RemovedLines: nil, // Should be empty since hunk header is invalid
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotFileDiff := parseDiffContent(tt.gitDiffOutput)
 			require.Equal(t, tt.wantFileDiff, gotFileDiff)
+		})
+	}
+}
+
+func TestValidateFilePath(t *testing.T) {
+	tests := []struct {
+		name      string
+		path      string
+		wantValid bool
+	}{
+		{
+			name:      "valid relative path",
+			path:      "src/main.go",
+			wantValid: true,
+		},
+		{
+			name:      "empty path",
+			path:      "",
+			wantValid: false,
+		},
+		{
+			name:      "path traversal attempt",
+			path:      "../../../etc/passwd",
+			wantValid: false,
+		},
+		{
+			name:      "absolute path",
+			path:      "/etc/passwd",
+			wantValid: false,
+		},
+		{
+			name:      "path with shell metacharacters",
+			path:      "file; rm -rf /",
+			wantValid: false,
+		},
+		{
+			name:      "path with backticks",
+			path:      "file`whoami`.go",
+			wantValid: false,
+		},
+		{
+			name:      "path with pipes",
+			path:      "file|cat /etc/passwd",
+			wantValid: false,
+		},
+		{
+			name:      "path with spaces in filename",
+			path:      "my file.go", // Invalid due to spaces (potential shell injection)
+			wantValid: false,
+		},
+		{
+			name:      "valid deeply nested path",
+			path:      "src/pkg/utils/helper.go",
+			wantValid: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotValid := validateFilePath(tt.path)
+			require.Equal(t, tt.wantValid, gotValid)
+		})
+	}
+}
+
+func TestValidateGitRef(t *testing.T) {
+	tests := []struct {
+		name      string
+		ref       string
+		wantValid bool
+	}{
+		{
+			name:      "valid branch name",
+			ref:       "main",
+			wantValid: true,
+		},
+		{
+			name:      "valid commit hash",
+			ref:       "abc123def456",
+			wantValid: true,
+		},
+		{
+			name:      "empty ref",
+			ref:       "",
+			wantValid: false,
+		},
+		{
+			name:      "ref with shell metacharacters",
+			ref:       "branch; rm -rf /",
+			wantValid: false,
+		},
+		{
+			name:      "ref with whitespace",
+			ref:       "my branch",
+			wantValid: false,
+		},
+		{
+			name:      "ref with path traversal",
+			ref:       "../main",
+			wantValid: false,
+		},
+		{
+			name:      "ref starting with slash",
+			ref:       "/main",
+			wantValid: false,
+		},
+		{
+			name:      "ref ending with slash",
+			ref:       "main/",
+			wantValid: false,
+		},
+		{
+			name:      "valid feature branch",
+			ref:       "feature/new-diff-parsing",
+			wantValid: true,
+		},
+		{
+			name:      "ref with control characters",
+			ref:       "main\x00",
+			wantValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotValid := validateGitRef(tt.ref)
+			require.Equal(t, tt.wantValid, gotValid)
 		})
 	}
 }

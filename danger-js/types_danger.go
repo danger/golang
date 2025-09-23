@@ -109,6 +109,11 @@ func (g gitImpl) DiffForFile(filePath string) (FileDiff, error) {
 
 // validateFilePath validates that the file path doesn't contain dangerous characters
 func validateFilePath(path string) bool {
+	// Empty paths are invalid
+	if path == "" {
+		return false
+	}
+
 	// Clean the path and check for dangerous patterns
 	cleaned := filepath.Clean(path)
 
@@ -117,8 +122,20 @@ func validateFilePath(path string) bool {
 		return false
 	}
 
+	// Reject absolute paths as they could access files outside the repository
+	if filepath.IsAbs(cleaned) {
+		return false
+	}
+
 	// Reject paths with shell metacharacters that could be used for command injection
 	for _, char := range shellMetaChars {
+		if strings.Contains(path, char) {
+			return false
+		}
+	}
+
+	// Reject paths with whitespace characters that could cause issues in shell commands
+	for _, char := range whitespaceChars {
 		if strings.Contains(path, char) {
 			return false
 		}
@@ -187,35 +204,71 @@ func (g gitImpl) DiffForFileWithRefs(filePath, baseRef, headRef string) (FileDif
 	return parseDiffContent(out.String()), nil
 }
 
+// parseHunkHeader extracts line number information from a hunk header
+func parseHunkHeader(line string) (removedStart, addedStart int, isHunkHeader bool) {
+	if matches := hunkHeaderRe.FindStringSubmatch(line); len(matches) > 3 {
+		var err error
+		removedStart, err = strconv.Atoi(matches[1])
+		if err != nil {
+			return 0, 0, false
+		}
+		addedStart, err = strconv.Atoi(matches[3])
+		if err != nil {
+			return 0, 0, false
+		}
+		return removedStart, addedStart, true
+	}
+	return 0, 0, false
+}
+
+// parseAddedLine extracts content from an added line and returns whether it's an added line
+func parseAddedLine(line string) (content string, isAdded bool) {
+	if matches := addedLineRe.FindStringSubmatch(line); len(matches) > 1 {
+		return matches[1], true
+	}
+	return "", false
+}
+
+// parseRemovedLine extracts content from a removed line and returns whether it's a removed line
+func parseRemovedLine(line string) (content string, isRemoved bool) {
+	if matches := removedLineRe.FindStringSubmatch(line); len(matches) > 1 {
+		return matches[1], true
+	}
+	return "", false
+}
+
 // parseDiffContent parses git diff output and extracts added and removed lines with line numbers
 func parseDiffContent(diffContent string) FileDiff {
 	var fileDiff FileDiff
 
 	lines := strings.Split(diffContent, "\n")
-	var currentRemovedLine, currentAddedLine int
+	// Initialize line numbers to -1 to indicate no hunk header has been found yet
+	currentRemovedLine := -1
+	currentAddedLine := -1
 
 	for _, line := range lines {
 		// Check for hunk header to track line numbers
-		if hunkMatches := hunkHeaderRe.FindStringSubmatch(line); len(hunkMatches) > 0 {
-			// Parse starting line numbers from hunk header
-			if removedStart, err := strconv.Atoi(hunkMatches[1]); err == nil {
-				currentRemovedLine = removedStart
+		if removedStart, addedStart, isHunk := parseHunkHeader(line); isHunk {
+			currentRemovedLine = removedStart
+			currentAddedLine = addedStart
+		} else if content, isAdded := parseAddedLine(line); isAdded {
+			// Only add line if we have a valid line number from a hunk header
+			if currentAddedLine >= 0 {
+				fileDiff.AddedLines = append(fileDiff.AddedLines, DiffLine{
+					Content: content,
+					Line:    currentAddedLine,
+				})
+				currentAddedLine++
 			}
-			if addedStart, err := strconv.Atoi(hunkMatches[3]); err == nil {
-				currentAddedLine = addedStart
+		} else if content, isRemoved := parseRemovedLine(line); isRemoved {
+			// Only add line if we have a valid line number from a hunk header
+			if currentRemovedLine >= 0 {
+				fileDiff.RemovedLines = append(fileDiff.RemovedLines, DiffLine{
+					Content: content,
+					Line:    currentRemovedLine,
+				})
+				currentRemovedLine++
 			}
-		} else if matches := addedLineRe.FindStringSubmatch(line); len(matches) > 1 {
-			fileDiff.AddedLines = append(fileDiff.AddedLines, DiffLine{
-				Content: matches[1],
-				Line:    currentAddedLine,
-			})
-			currentAddedLine++
-		} else if matches := removedLineRe.FindStringSubmatch(line); len(matches) > 1 {
-			fileDiff.RemovedLines = append(fileDiff.RemovedLines, DiffLine{
-				Content: matches[1],
-				Line:    currentRemovedLine,
-			})
-			currentRemovedLine++
 		}
 	}
 
