@@ -15,6 +15,12 @@ var (
 	addedLineRe   = regexp.MustCompile(`^\+([^+].*|$)`)
 	removedLineRe = regexp.MustCompile(`^-([^-].*|$)`)
 	hunkHeaderRe  = regexp.MustCompile(`^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@`)
+
+	// Shell metacharacters that could be used for command injection
+	shellMetaChars = []string{";", "|", "&", "$", "`", "(", ")", "{", "}", "[", "]", "*", "?", "<", ">", "'", "\""}
+
+	// Whitespace characters that should be rejected in git refs
+	whitespaceChars = []string{" ", "\t", "\n", "\r"}
 )
 
 type GitHub interface {
@@ -112,8 +118,7 @@ func validateFilePath(path string) bool {
 	}
 
 	// Reject paths with shell metacharacters that could be used for command injection
-	dangerousChars := []string{";", "|", "&", "$", "`", "(", ")", "{", "}", "[", "]", "*", "?", "<", ">", "'", "\""}
-	for _, char := range dangerousChars {
+	for _, char := range shellMetaChars {
 		if strings.Contains(path, char) {
 			return false
 		}
@@ -128,9 +133,14 @@ func validateGitRef(ref string) bool {
 	if ref == "" {
 		return false
 	}
-	// Disallow shell metacharacters and whitespace
-	dangerousChars := []string{";", "|", "&", "$", "`", "(", ")", "{", "}", "[", "]", "*", "?", "<", ">", " ", "\t", "\n", "\r", "'", "\""}
-	for _, char := range dangerousChars {
+	// Disallow shell metacharacters
+	for _, char := range shellMetaChars {
+		if strings.Contains(ref, char) {
+			return false
+		}
+	}
+	// Disallow whitespace characters
+	for _, char := range whitespaceChars {
 		if strings.Contains(ref, char) {
 			return false
 		}
