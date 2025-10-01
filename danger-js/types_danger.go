@@ -24,33 +24,33 @@ var (
 )
 
 type GitHub interface {
-	GetIssue() GitHubIssue
-	GetPR() GitHubPR
-	GetThisPR() GitHubAPIPR
-	GetCommits() []GitHubCommit
-	GetReviews() []GitHubReview
-	GetRequestedReviewers() GitHubReviewers
+	Issue() GitHubIssue
+	PR() GitHubPR
+	ThisPR() GitHubAPIPR
+	Commits() []GitHubCommit
+	Reviews() []GitHubReview
+	RequestedReviewers() GitHubReviewers
 }
 
 type GitLab interface {
-	GetMetadata() RepoMetaData
-	GetMR() GitLabMR
-	GetCommits() []GitLabMRCommit
-	GetApprovals() GitLabApproval
+	Metadata() RepoMetaData
+	MR() GitLabMR
+	Commits() []GitLabMRCommit
+	Approvals() GitLabApproval
 }
 
 type Settings interface {
-	GetGitHubAccessToken() string
-	GetGitHubBaseURL() string
-	GetGitHubAdditionalHeaders() any
-	GetCLIArgs() CLIArgs
+	GitHubAccessToken() string
+	GitHubBaseURL() string
+	GitHubAdditionalHeaders() any
+	CLIArgs() CLIArgs
 }
 
 type Git interface {
-	GetModifiedFiles() []FilePath
-	GetCreatedFiles() []FilePath
-	GetDeletedFiles() []FilePath
-	GetCommits() []GitCommit
+	ModifiedFiles() []FilePath
+	CreatedFiles() []FilePath
+	DeletedFiles() []FilePath
+	Commits() []GitCommit
 	DiffForFile(filePath string) (FileDiff, error)
 	DiffForFileWithRefs(filePath, baseRef, headRef string) (FileDiff, error)
 }
@@ -67,26 +67,26 @@ type FilePath = string
 
 // gitImpl is the internal implementation of the Git interface
 type gitImpl struct {
-	ModifiedFiles []FilePath  `json:"modified_files"`
-	CreatedFiles  []FilePath  `json:"created_files"`
-	DeletedFiles  []FilePath  `json:"deleted_files"`
-	Commits       []GitCommit `json:"commits"`
+	ModifiedFilesList []FilePath  `json:"modified_files"`
+	CreatedFilesList  []FilePath  `json:"created_files"`
+	DeletedFilesList  []FilePath  `json:"deleted_files"`
+	CommitsList       []GitCommit `json:"commits"`
 }
 
-func (g gitImpl) GetModifiedFiles() []FilePath {
-	return g.ModifiedFiles
+func (g gitImpl) ModifiedFiles() []FilePath {
+	return g.ModifiedFilesList
 }
 
-func (g gitImpl) GetCreatedFiles() []FilePath {
-	return g.CreatedFiles
+func (g gitImpl) CreatedFiles() []FilePath {
+	return g.CreatedFilesList
 }
 
-func (g gitImpl) GetDeletedFiles() []FilePath {
-	return g.DeletedFiles
+func (g gitImpl) DeletedFiles() []FilePath {
+	return g.DeletedFilesList
 }
 
-func (g gitImpl) GetCommits() []GitCommit {
-	return g.Commits
+func (g gitImpl) Commits() []GitCommit {
+	return g.CommitsList
 }
 
 // FileDiff represents the changes in a file.
@@ -282,82 +282,82 @@ type settingsImpl struct {
 		BaseURL           string `json:"baseURL"`
 		AdditionalHeaders any    `json:"additionalHeaders"`
 	} `json:"github"`
-	CLIArgs CLIArgs `json:"cliArgs"`
+	CLIArgsData CLIArgs `json:"cliArgs"`
 }
 
-// GetGitHubAccessToken returns the GitHub access token
-func (s settingsImpl) GetGitHubAccessToken() string {
+// GitHubAccessToken returns the GitHub access token
+func (s settingsImpl) GitHubAccessToken() string {
 	return s.GitHub.AccessToken
 }
 
-func (s settingsImpl) GetGitHubBaseURL() string {
+func (s settingsImpl) GitHubBaseURL() string {
 	return s.GitHub.BaseURL
 }
 
-func (s settingsImpl) GetGitHubAdditionalHeaders() any {
+func (s settingsImpl) GitHubAdditionalHeaders() any {
 	return s.GitHub.AdditionalHeaders
 }
 
-func (s settingsImpl) GetCLIArgs() CLIArgs {
-	return s.CLIArgs
+func (s settingsImpl) CLIArgs() CLIArgs {
+	return s.CLIArgsData
 }
 
 // gitHubImpl is the internal implementation of the GitHub interface
 type gitHubImpl struct {
-	Issue              GitHubIssue     `json:"issue"`
-	PR                 GitHubPR        `json:"pr"`
-	ThisPR             GitHubAPIPR     `json:"thisPR"`
-	Commits            []GitHubCommit  `json:"commits"`
-	Reviews            []GitHubReview  `json:"reviews"`
-	RequestedReviewers GitHubReviewers `json:"requested_reviewers"`
+	IssueData              GitHubIssue     `json:"issue"`
+	PRData                 GitHubPR        `json:"pr"`
+	ThisPRData             GitHubAPIPR     `json:"thisPR"`
+	CommitsList            []GitHubCommit  `json:"commits"`
+	ReviewsList            []GitHubReview  `json:"reviews"`
+	RequestedReviewersData GitHubReviewers `json:"requested_reviewers"`
 }
 
-func (g gitHubImpl) GetIssue() GitHubIssue {
-	return g.Issue
+func (g gitHubImpl) Issue() GitHubIssue {
+	return g.IssueData
 }
 
-func (g gitHubImpl) GetPR() GitHubPR {
-	return g.PR
+func (g gitHubImpl) PR() GitHubPR {
+	return g.PRData
 }
 
-func (g gitHubImpl) GetThisPR() GitHubAPIPR {
-	return g.ThisPR
+func (g gitHubImpl) ThisPR() GitHubAPIPR {
+	return g.ThisPRData
 }
 
-func (g gitHubImpl) GetCommits() []GitHubCommit {
-	return g.Commits
+func (g gitHubImpl) Commits() []GitHubCommit {
+	return g.CommitsList
 }
 
-func (g gitHubImpl) GetReviews() []GitHubReview {
-	return g.Reviews
+func (g gitHubImpl) Reviews() []GitHubReview {
+	return g.ReviewsList
 }
 
-func (g gitHubImpl) GetRequestedReviewers() GitHubReviewers {
-	return g.RequestedReviewers
+func (g gitHubImpl) RequestedReviewers() GitHubReviewers {
+	return g.RequestedReviewersData
 }
 
 // gitLabImpl is the internal implementation of the GitLab interface
 type gitLabImpl struct {
-	Metadata  RepoMetaData     `json:"Metadata"`
-	MR        GitLabMR         `json:"mr"`
-	Commits   []GitLabMRCommit `json:"commits"`
-	Approvals GitLabApproval   `json:"approvals"`
+	MetadataData  RepoMetaData     `json:"Metadata"`
+	MRData        GitLabMR         `json:"mr"`
+	CommitsList   []GitLabMRCommit `json:"commits"`
+	ApprovalsData GitLabApproval   `json:"approvals"`
 }
 
-func (g gitLabImpl) GetMetadata() RepoMetaData {
-	return g.Metadata
+func (g gitLabImpl) Metadata() RepoMetaData {
+	return g.MetadataData
 }
 
-func (g gitLabImpl) GetMR() GitLabMR {
-	return g.MR
+func (g gitLabImpl) MR() GitLabMR {
+	return g.MRData
 }
 
-func (g gitLabImpl) GetCommits() []GitLabMRCommit {
-	return g.Commits
+func (g gitLabImpl) Commits() []GitLabMRCommit {
+	return g.CommitsList
 }
 
-func (g gitLabImpl) GetApprovals() GitLabApproval {
-	return g.Approvals
+func (g gitLabImpl) Approvals() GitLabApproval {
+	return g.ApprovalsData
 }
 
 // DSLData is used for JSON unmarshaling, with concrete types
