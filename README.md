@@ -38,7 +38,7 @@ The `danger-go` command line tool supports `local`, `pr`, and `ci` commands. `da
 ## CI integration
 
 ### GitHub Actions
-See `.github/workflows/main.yml` as a reference.
+See `.github/workflows/test.yml` as a reference.
 
 ## Authors
 

@@ -16,7 +16,7 @@ jobs:
           node-version: '24'
 
       - name: Install Danger JS
-        run: npm install -g danger
+        run: npm install -g danger@14.1.0
 
       - name: Install danger-go
         run: go install github.com/danger/golang/cmd/danger-go
@@ -30,6 +30,12 @@ jobs:
       - name: Run danger-go ci
         run: danger-go ci
         working-directory: ./build/ci
+
+      - name: Run danger-go pr
+        run: danger-go pr "$PR_URL"
+        working-directory: ./build/ci
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
