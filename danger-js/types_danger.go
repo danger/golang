@@ -127,6 +127,11 @@ func validateFilePath(path string) bool {
 		return false
 	}
 
+	// Reject paths git would parse as an option
+	if strings.HasPrefix(path, "-") {
+		return false
+	}
+
 	// Reject paths with shell metacharacters that could be used for command injection
 	for _, char := range shellMetaChars {
 		if strings.Contains(path, char) {
@@ -162,6 +167,10 @@ func validateGitRef(ref string) bool {
 			return false
 		}
 	}
+	// Disallow refs git would parse as an option, e.g. --output=<file>
+	if strings.HasPrefix(ref, "-") {
+		return false
+	}
 	// Disallow path traversal
 	if strings.Contains(ref, "..") {
 		return false
@@ -193,7 +202,7 @@ func (g gitImpl) DiffForFileWithRefs(filePath, baseRef, headRef string) (FileDif
 		return FileDiff{}, fmt.Errorf("invalid head ref: %s", headRef)
 	}
 
-	cmd := exec.Command("git", "diff", "--unified=0", baseRef, headRef, filePath)
+	cmd := exec.Command("git", "diff", "--unified=0", baseRef, headRef, "--", filePath)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
@@ -380,9 +389,9 @@ func (d DSLData) ToInterface() DSL {
 
 type CLIArgs struct {
 	Base               string `json:"base"`
-	Verbose            string `json:"verbose"`
+	Verbose            bool   `json:"verbose"`
 	ExternalCIProvider string `json:"externalCiProvider"`
-	TextOnly           bool   `json:"textOnly"` // JS has this as string
+	TextOnly           bool   `json:"textOnly"`
 	Dangerfile         string `json:"dangerfile"`
 	ID                 string `json:"id"`
 	Staging            bool   `json:"staging"`

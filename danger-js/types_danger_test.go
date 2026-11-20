@@ -354,6 +354,11 @@ func TestValidateGitRef(t *testing.T) {
 			wantValid: true,
 		},
 		{
+			name:      "ref that git would parse as an option",
+			ref:       "--output=/tmp/x",
+			wantValid: false,
+		},
+		{
 			name:      "ref with control characters",
 			ref:       "main\x00",
 			wantValid: false,
