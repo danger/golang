@@ -163,3 +163,56 @@ func TestProcessPropagatesDangerFailure(t *testing.T) {
 
 	require.Error(t, Process("ci", nil), "a failing danger run must fail danger-go so CI goes red")
 }
+
+// fakeDangerPR writes a `danger` script that behaves like `danger pr --json`:
+// progress on stderr, the DSL on stdout, and its arguments recorded.
+func fakeDangerPR(t *testing.T, body string) (bin, argsFile string) {
+	t.Helper()
+	dir := t.TempDir()
+	bin = filepath.Join(dir, "danger")
+	argsFile = filepath.Join(dir, "args.txt")
+	script := "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\" >> " + argsFile + "; done\n" + body
+	require.NoError(t, os.WriteFile(bin, []byte(script), 0o755))
+	return bin, argsFile
+}
+
+func TestGetPR(t *testing.T) {
+	fixture, err := filepath.Abs("testdata/github_pr_dsl.json")
+	require.NoError(t, err)
+	bin, argsFile := fakeDangerPR(t, "echo 'Starting Danger PR on danger/golang#46' >&2\ncat "+fixture+"\n")
+
+	dsl, err := GetPR("https://github.com/danger/golang/pull/46", bin)
+	require.NoError(t, err)
+	require.Equal(t, 46, dsl.GitHub.PR().Number)
+	require.Equal(t, []FilePath{".github/workflows/test.yml"}, dsl.Git.ModifiedFiles())
+
+	args, err := os.ReadFile(argsFile)
+	require.NoError(t, err)
+	require.Equal(t, "pr\nhttps://github.com/danger/golang/pull/46\n--json\n--dangerfile\ndangerfile.go\n", string(args))
+}
+
+func TestGetPRFindsDangerOnPath(t *testing.T) {
+	fixture, err := filepath.Abs("testdata/github_pr_dsl.json")
+	require.NoError(t, err)
+	bin, _ := fakeDangerPR(t, "cat "+fixture+"\n")
+	t.Setenv("PATH", filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	dsl, err := GetPR("https://github.com/danger/golang/pull/46", "")
+	require.NoError(t, err)
+	require.Equal(t, 46, dsl.GitHub.PR().Number)
+}
+
+func TestGetPRErrors(t *testing.T) {
+	t.Run("danger fails", func(t *testing.T) {
+		bin, _ := fakeDangerPR(t, "echo 'Bad credentials' >&2\nexit 1\n")
+		_, err := GetPR("https://github.com/danger/golang/pull/46", bin)
+		require.ErrorContains(t, err, "could not download DSL JSON with danger-js")
+		require.ErrorContains(t, err, "Bad credentials")
+	})
+
+	t.Run("output is not JSON", func(t *testing.T) {
+		bin, _ := fakeDangerPR(t, "echo 'not json'\n")
+		_, err := GetPR("https://github.com/danger/golang/pull/46", bin)
+		require.ErrorContains(t, err, "decoding DSL JSON from danger-js")
+	})
+}

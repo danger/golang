@@ -14,8 +14,7 @@ discussion.
   there's no issue yet, please create one.
 * If you don't have access to the repo, fork to your on your GitHub user account, make code changes there, and then
   create a PR against the `main` branch.
-* Add tests for any new features or bug fixes. Ideally, each PR increases the test coverage. We have a quality gate that
-  checks.
+* Add tests for any new features or bug fixes. Ideally, each PR increases the test coverage.
 * Follow the existing code style (follow [Effective Go](https://go.dev/doc/effective_go) where no obvious convention
   exists).
 * Use the pull request template provided, and fill in all the details you can.

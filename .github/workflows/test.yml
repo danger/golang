@@ -16,7 +16,7 @@ jobs:
           node-version: '24'
 
       - name: Install Danger JS
-        run: npm install -g danger
+        run: npm install -g danger@14.1.0
 
       - name: Install danger-go
         run: go install github.com/danger/golang/cmd/danger-go

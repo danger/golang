@@ -1,6 +1,7 @@
 package dangerJs
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -22,6 +23,8 @@ func findBinary(name string) (string, error) {
 	return strings.TrimSpace(string(dangerBin)), nil
 }
 
+// GetPR fetches the DSL for an existing PR with `danger pr <url> --json`.
+// If dangerBin is empty, `danger` is looked up on PATH.
 func GetPR(url string, dangerBin string) (DSL, error) {
 	var err error
 	if dangerBin == "" {
@@ -31,17 +34,24 @@ func GetPR(url string, dangerBin string) (DSL, error) {
 		}
 	}
 
-	cmd := exec.Command(dangerBin, "pr", url, "--json")
-	prJSON, err := cmd.CombinedOutput()
+	// Without --dangerfile, danger-js refuses to run unless a dangerfile.js or
+	// dangerfile.ts exists, even though --json never reads it.
+	cmd := exec.Command(dangerBin, "pr", url, "--json", "--dangerfile", "dangerfile.go")
+	// danger-js writes progress to stderr, so only stdout is JSON.
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	prJSON, err := cmd.Output()
 	if err != nil {
-		return DSL{}, fmt.Errorf("could not download DSL JSON with danger-js: %w", err)
+		return DSL{}, fmt.Errorf("could not download DSL JSON with danger-js: %w: %s", err, stderr.String())
 	}
 
-	var prData DSLData
-	if err = json.Unmarshal(prJSON, &prData); err != nil {
-		return DSL{}, err
+	var prData struct {
+		Danger DSLData `json:"danger"`
 	}
-	return prData.ToInterface(), nil
+	if err = json.Unmarshal(prJSON, &prData); err != nil {
+		return DSL{}, fmt.Errorf("decoding DSL JSON from danger-js: %w", err)
+	}
+	return prData.Danger.ToInterface(), nil
 }
 
 func Process(command string, args []string) error {
