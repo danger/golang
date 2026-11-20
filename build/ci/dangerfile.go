@@ -2,13 +2,17 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	danger "github.com/danger/golang"
 )
 
 // Run is invoked by danger-go
 func Run(d *danger.T, pr danger.DSL) {
-	selfCheck(d, pr)
+	// `danger-go local` has no PR data, so only check on CI.
+	if os.Getenv("CI") != "" {
+		selfCheck(d, pr)
+	}
 
 	d.Message(fmt.Sprintf("%d new files added!", len(pr.Git.CreatedFiles())), "", 0)
 	d.Message(fmt.Sprintf("%d files modified!", len(pr.Git.ModifiedFiles())), "", 0)

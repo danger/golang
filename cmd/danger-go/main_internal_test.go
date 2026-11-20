@@ -58,11 +58,12 @@ func TestHelpFlagAfterCommand(t *testing.T) {
 }
 
 func TestDangerCommandsNeedDangerJS(t *testing.T) {
+	bin := buildCLI(t)
 	for _, command := range []string{"ci", "local", "pr"} {
 		t.Run(command, func(t *testing.T) {
-			bin := buildCLI(t)
 			cmd := exec.Command(bin, command)
-			cmd.Env = append(os.Environ(), "PATH="+t.TempDir())
+			// Keep /usr/bin:/bin so `which` itself runs and reports danger missing.
+			cmd.Env = append(os.Environ(), "PATH="+t.TempDir()+string(os.PathListSeparator)+"/usr/bin:/bin")
 			res, err := cmd.CombinedOutput()
 			require.Error(t, err)
 			require.Contains(t, string(res), "could not find `danger` binary")
@@ -70,8 +71,8 @@ func TestDangerCommandsNeedDangerJS(t *testing.T) {
 	}
 }
 
-// buildCLI builds danger-go once per test so it can run with a modified PATH,
-// which `go run` itself needs.
+// buildCLI builds danger-go so it can run with a PATH that has no `go` on it,
+// which `go run` would need.
 func buildCLI(t *testing.T) string {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "danger-go")

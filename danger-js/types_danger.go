@@ -127,11 +127,6 @@ func validateFilePath(path string) bool {
 		return false
 	}
 
-	// Reject paths git would parse as an option
-	if strings.HasPrefix(path, "-") {
-		return false
-	}
-
 	// Reject paths with shell metacharacters that could be used for command injection
 	for _, char := range shellMetaChars {
 		if strings.Contains(path, char) {

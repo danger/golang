@@ -40,11 +40,13 @@ func TestDiffForFile(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte(content), 0o644))
 	}
 	write("one\ntwo\nthree\n")
-	run(t, dir, "git", "add", "file.txt")
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "-dash.txt"), []byte("a\n"), 0o644))
+	run(t, dir, "git", "add", "file.txt", "--", "-dash.txt")
 	run(t, dir, "git", "commit", "-q", "-m", "first")
 	write("one\nTWO\nthree\nfour\n")
 	run(t, dir, "git", "commit", "-q", "-am", "second")
 	write("zero\none\nTWO\nthree\nfour\n")
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "-dash.txt"), []byte("a\nb\n"), 0o644))
 	run(t, dir, "git", "commit", "-q", "-am", "third")
 	chdir(t, dir)
 
@@ -65,6 +67,12 @@ func TestDiffForFile(t *testing.T) {
 		}, diff)
 	})
 
+	t.Run("path starting with a dash is passed after --", func(t *testing.T) {
+		diff, err := g.DiffForFile("-dash.txt")
+		require.NoError(t, err)
+		require.Equal(t, FileDiff{AddedLines: []DiffLine{{Content: "b", Line: 2}}}, diff)
+	})
+
 	t.Run("unchanged file", func(t *testing.T) {
 		diff, err := g.DiffForFileWithRefs("file.txt", "HEAD", "HEAD")
 		require.NoError(t, err)
@@ -83,7 +91,6 @@ func TestDiffForFile(t *testing.T) {
 		{name: "path injection", path: "file.txt; rm -rf /", base: "HEAD^", head: "HEAD", errPrefix: "invalid file path"},
 		{name: "base ref injection", path: "file.txt", base: "HEAD;id", head: "HEAD", errPrefix: "invalid base ref"},
 		{name: "head ref injection", path: "file.txt", base: "HEAD^", head: "--output=" + outFile, errPrefix: "invalid head ref"},
-		{name: "path option injection", path: "--output=x", base: "HEAD^", head: "HEAD", errPrefix: "invalid file path"},
 	}
 	for _, c := range rejected {
 		t.Run(c.name, func(t *testing.T) {
@@ -134,7 +141,8 @@ func TestProcess(t *testing.T) {
 
 func TestProcessMissingBinaries(t *testing.T) {
 	t.Run("no danger", func(t *testing.T) {
-		t.Setenv("PATH", t.TempDir())
+		// Keep /usr/bin:/bin so `which` itself runs and reports danger missing.
+		t.Setenv("PATH", t.TempDir()+string(os.PathListSeparator)+"/usr/bin:/bin")
 		err := Process("ci", nil)
 		require.ErrorContains(t, err, "could not find `danger` binary")
 	})
