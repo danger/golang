@@ -116,4 +116,9 @@ The project uses GitHub Actions (`.github/workflows/test.yml`) which:
 - Use `go test -v ./...` to run all tests
 - Tests are in `*_test.go` files
 - Internal tests in `api_internal_test.go` test unexported functions
+- `danger-js/testdata/github_pr_dsl.json` is a real danger-js DSL (token redacted); the contract tests decode it.
+  Recapture it after a danger-js upgrade with `danger pr <url> --process <script> --passURLForDSL`
+- `cmd/danger-go/runner` tests build the binary and dangerfile plugins from `runner/testdata` (a separate module), so
+  they need `-buildmode=plugin` support (Linux/macOS)
+- `build/ci/dangerfile.go` fails CI if the DSL decodes empty - the only check that runs under the CI Node version
 - Follow table-driven test patterns where applicable
